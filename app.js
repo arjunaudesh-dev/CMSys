@@ -1297,6 +1297,9 @@ function switchView(view, preventPushState = false) {
     case "sailors":
       renderSailorsView();
       break;
+    case "fusioncenter":
+      renderFusionCenter();
+      break;
     case "sailordashboard":
       renderSailorDashboardView();
       break;
@@ -15108,4 +15111,323 @@ function isCurrentDayHoliday(dateObj = new Date()) {
         if (explicitMark === false) return false;
     }
     return isSunday;
+}
+
+// ==================== FUSION CENTER (COMMAND & CONTROL CENTER) ====================
+
+function renderFusionCenter() {
+  const sectionSelect = document.getElementById("fusionSectionSelect");
+  const selectedSection = sectionSelect ? sectionSelect.value : "A-Zone";
+
+  const titleEl = document.getElementById("fusionActiveSectionTitle");
+  if (titleEl) titleEl.textContent = selectedSection.replace(/-/g, " ");
+
+  // 1. Logged-in & Authorized Users Card
+  const usersGrid = document.getElementById("fusionActiveUsersGrid");
+  const usersCountEl = document.getElementById("fusionActiveUsersCount");
+  
+  const allUsers = store.usersAuth || [
+    { id: '1', username: 'OIC-DOCKYARD', name: 'Commander Perera', role: 'OIC', active: true, sections: ['A-Zone', 'BC-Zone', 'Carpentry-Shop', 'Welding-Shop', 'Out-Project', 'Housing-Project', 'Other-Base', 'Admin-&-Staff-Duties'] },
+    { id: '2', username: 'EC124913', name: 'CPO Sanjeewa Bandara', role: 'Artificer', active: true, sections: [selectedSection] }
+  ];
+
+  const authorizedUsers = allUsers.filter(u => u.active && (u.role === 'OIC' || (u.sections && u.sections.includes(selectedSection))));
+
+  if (usersCountEl) usersCountEl.textContent = `${authorizedUsers.length} Authorized Users`;
+  if (usersGrid) {
+    if (authorizedUsers.length === 0) {
+      usersGrid.innerHTML = `<div class="col-span-full text-xs text-slate-400 italic p-3 bg-slate-50 rounded-xl text-center">No authorized users assigned to ${selectedSection}.</div>`;
+    } else {
+      usersGrid.innerHTML = authorizedUsers.map(u => `
+        <div class="p-2.5 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between shadow-sm">
+          <div>
+            <p class="font-extrabold text-xs text-slate-800">${u.name}</p>
+            <p class="text-[10px] text-slate-500 font-mono">${u.username} • ${u.role}</p>
+          </div>
+          <span class="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">● Active</span>
+        </div>
+      `).join('');
+    }
+  }
+
+  // 2. Module 1: Daily Detailing
+  const activeWos = (store.workOrders || []).filter(wo => (wo.status === 'Active' || wo.status === 'Pending') && (wo.zone_id === selectedSection || selectedSection === 'Admin-&-Staff-Duties'));
+  const detailingCountEl = document.getElementById("fusionDetailingCount");
+  if (detailingCountEl) detailingCountEl.textContent = `${activeWos.length} Active Jobs/Tasks`;
+  const detailingContainer = document.getElementById("fusionDetailingContent");
+  if (detailingContainer) {
+    if (activeWos.length === 0) {
+      detailingContainer.innerHTML = `<p class="text-xs text-slate-400 italic p-2 bg-slate-50 rounded-xl text-center">No active detailing assignments for ${selectedSection}.</p>`;
+    } else {
+      detailingContainer.innerHTML = activeWos.slice(0, 6).map(wo => `
+        <div class="p-2 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+          <div>
+            <span class="font-mono font-bold text-teal-700 text-[11px]">${wo.reference_no || 'WO-#' + wo.id}</span>
+            <p class="font-bold text-slate-800 truncate max-w-xs">${wo.description || 'Duty Task'}</p>
+          </div>
+          <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800">${wo.status}</span>
+        </div>
+      `).join('');
+    }
+  }
+
+  // 3. Module 2: Estimating Works
+  const activeEsts = (store.estimates || []).filter(e => !selectedSection || e.zone_id === selectedSection || selectedSection === 'Admin-&-Staff-Duties');
+  const estCountEl = document.getElementById("fusionEstimatesCount");
+  if (estCountEl) estCountEl.textContent = `${activeEsts.length} Estimates`;
+  const estContainer = document.getElementById("fusionEstimatesContent");
+  if (estContainer) {
+    if (activeEsts.length === 0) {
+      estContainer.innerHTML = `<p class="text-xs text-slate-400 italic p-2 bg-slate-50 rounded-xl text-center">No active estimates for ${selectedSection}.</p>`;
+    } else {
+      estContainer.innerHTML = activeEsts.slice(0, 6).map(est => `
+        <div class="p-2 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+          <div>
+            <span class="font-mono font-bold text-emerald-700 text-[11px]">${est.estimate_number || 'EST-#' + est.id}</span>
+            <p class="font-bold text-slate-800 truncate max-w-xs">${est.title || 'Material Estimate'}</p>
+          </div>
+          <span class="font-bold text-emerald-700 text-[11px]">${formatCurrency(est.total_cost || 0)}</span>
+        </div>
+      `).join('');
+    }
+  }
+
+  // 4. Module 3: Job Card Maintenance
+  const activeJcs = (store.jobCards || []).filter(jc => jc.zone_id === selectedSection || selectedSection === 'Admin-&-Staff-Duties');
+  const jcCountEl = document.getElementById("fusionJobCardsCount");
+  if (jcCountEl) jcCountEl.textContent = `${activeJcs.length} Cards`;
+  const jcContainer = document.getElementById("fusionJobCardsContent");
+  if (jcContainer) {
+    if (activeJcs.length === 0) {
+      jcContainer.innerHTML = `<p class="text-xs text-slate-400 italic p-2 bg-slate-50 rounded-xl text-center">No active job cards logged for ${selectedSection}.</p>`;
+    } else {
+      jcContainer.innerHTML = activeJcs.slice(0, 6).map(jc => `
+        <div class="p-2 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+          <div>
+            <span class="font-mono font-bold text-amber-700 text-[11px]">${jc.job_number || 'JC-#' + jc.id}</span>
+            <p class="font-bold text-slate-800 truncate max-w-xs">${jc.description || 'Job Card Maintenance'}</p>
+          </div>
+          <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full ${jc.status === 'Completed' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">${jc.status || 'Active'}</span>
+        </div>
+      `).join('');
+    }
+  }
+
+  // 5. Module 4: Inventory Stock Movements (On-Charge & Off-Charge)
+  const invItems = (store.inventory || []).filter(i => !i.zone_id || i.zone_id === selectedSection || selectedSection === 'Admin-&-Staff-Duties');
+  const invContainer = document.getElementById("fusionInventoryContent");
+  if (invContainer) {
+    if (invItems.length === 0) {
+      invContainer.innerHTML = `<p class="text-xs text-slate-400 italic p-2 bg-slate-50 rounded-xl text-center">No inventory stock movements for ${selectedSection}.</p>`;
+    } else {
+      invContainer.innerHTML = invItems.slice(0, 6).map(i => `
+        <div class="p-2 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+          <div>
+            <p class="font-bold text-slate-800 truncate max-w-xs">${i.item_name || i.name}</p>
+            <p class="text-[10px] text-slate-500 font-mono">${i.category || 'General Stock'}</p>
+          </div>
+          <span class="font-black text-purple-700 text-xs">${i.quantity || 0} ${i.unit || 'Units'}</span>
+        </div>
+      `).join('');
+    }
+  }
+
+  // 6. Module 5: Daily Evaluations & White/Black Marks
+  const evals = (store.dailyEvaluations || []).filter(e => e.zone_id === selectedSection || selectedSection === 'Admin-&-Staff-Duties');
+  const evalCountEl = document.getElementById("fusionEvaluationCount");
+  if (evalCountEl) evalCountEl.textContent = `${evals.length} Evals Logged`;
+  const evalContainer = document.getElementById("fusionEvaluationContent");
+  if (evalContainer) {
+    if (evals.length === 0) {
+      evalContainer.innerHTML = `<p class="text-xs text-slate-400 italic p-2 bg-slate-50 rounded-xl text-center">No daily evaluations logged for ${selectedSection} today.</p>`;
+    } else {
+      evalContainer.innerHTML = evals.slice(0, 6).map(ev => {
+        const s = (store.sailors || []).find(sal => String(sal.id) === String(ev.sailor_id) || String(sal._fbKey) === String(ev.sailor_id));
+        const avg = ((ev.quality_score + ev.efficiency_score + ev.discipline_score + ev.material_score + ev.attitude_score + ev.skill_score) / 6.0) || 8.0;
+        return `
+          <div class="p-2 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+            <div>
+              <p class="font-bold text-slate-800">${s ? s.name : 'Sailor Evaluation'}</p>
+              <p class="text-[10px] text-slate-500 font-mono">${ev.date || getLocalDateString()}</p>
+            </div>
+            <span class="font-extrabold text-teal-700 text-xs">${avg.toFixed(2)} / 10</span>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+}
+
+// ==================== USER AUTHENTICATION & ACCESS MANAGEMENT CENTER ====================
+
+store.usersAuth = store.usersAuth || [
+  { id: '1', username: 'OIC-COMMAND', name: 'Commander Perera', role: 'OIC', active: true, sections: ['A-Zone', 'BC-Zone', 'Carpentry-Shop', 'Welding-Shop', 'Out-Project', 'Housing-Project', 'Other-Base', 'Admin-&-Staff-Duties'] },
+  { id: '2', username: 'EC124913', name: 'CPO Sanjeewa Bandara', role: 'Artificer', active: true, sections: ['A-Zone', 'BC-Zone', 'Admin-&-Staff-Duties'] },
+  { id: '3', username: 'VAS76193', name: 'PO Perera', role: 'Supervisor', active: true, sections: ['Carpentry-Shop', 'Welding-Shop'] }
+];
+
+function initUserAuthListeners() {
+  if (window.opsDB) {
+    opsDB.ref("users_auth").on("value", (snapshot) => {
+      const val = snapshot.val();
+      if (val) {
+        store.usersAuth = Object.entries(val).map(([k, u]) => ({ id: k, ...u }));
+        renderUserAuthManagement();
+      }
+    });
+  }
+}
+
+function renderUserAuthManagement() {
+  const container = document.getElementById("userAuthTableBody");
+  if (!container) return;
+
+  const list = store.usersAuth || [];
+  if (list.length === 0) {
+    container.innerHTML = `
+      <tr>
+        <td colspan="6" class="text-center py-8 text-slate-400 italic text-xs">
+          🔐 No user accounts registered yet. Click "Add New User Account" to create one.
+        </td>
+      </tr>`;
+    return;
+  }
+
+  container.innerHTML = list.map(u => {
+    const secList = (u.sections && u.sections.length > 0) ? u.sections.map(s => `<span class="px-2 py-0.5 bg-teal-50 text-teal-800 border border-teal-200 font-extrabold rounded text-[10px] m-0.5 inline-block">${s.replace(/-/g, ' ')}</span>`).join('') : '<span class="text-slate-400 italic text-[10px]">No Authorized Sections</span>';
+    const statusBadge = u.active !== false 
+      ? `<span class="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-[10px]">● Active</span>`
+      : `<span class="px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 font-extrabold text-[10px]">○ Disabled</span>`;
+
+    return `
+      <tr class="hover:bg-slate-50 transition-colors border-b border-slate-100">
+        <td class="py-3 px-3.5 font-mono font-extrabold text-slate-800">${u.username}</td>
+        <td class="py-3 px-3.5 font-extrabold text-slate-800">${u.name}</td>
+        <td class="py-3 px-3.5"><span class="px-2 py-0.5 bg-slate-900 text-amber-300 font-extrabold rounded text-[10px]">${u.role || 'Staff'}</span></td>
+        <td class="py-3 px-3.5 max-w-xs">${secList}</td>
+        <td class="py-3 px-3.5 text-center">${statusBadge}</td>
+        <td class="py-3 px-3.5 text-right space-x-1.5">
+          <button onclick="editUserAccount('${u.id}')" class="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold rounded-lg text-xs">Edit</button>
+          <button onclick="toggleUserStatus('${u.id}')" class="px-2.5 py-1 ${u.active !== false ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'} font-bold rounded-lg text-xs">${u.active !== false ? 'Disable' : 'Enable'}</button>
+          <button onclick="deleteUserAccount('${u.id}')" class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-lg text-xs">Delete</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function openUserAuthModal(userId = null) {
+  const modal = document.getElementById("modal-user-auth");
+  if (!modal) return;
+
+  document.getElementById("uaUserId").value = userId || "";
+  document.getElementById("userAuthModalTitle").textContent = userId ? "✏️ Edit User Account & Access Matrix" : "🔐 Add New User Account";
+
+  if (userId) {
+    const u = (store.usersAuth || []).find(item => String(item.id) === String(userId));
+    if (u) {
+      document.getElementById("uaUsername").value = u.username || "";
+      document.getElementById("uaName").value = u.name || "";
+      document.getElementById("uaPassword").value = u.password || "••••••••";
+      document.getElementById("uaRole").value = u.role || "Staff";
+      document.getElementById("uaActiveStatus").checked = u.active !== false;
+
+      // Checkboxes
+      const checkboxes = document.querySelectorAll("#uaSectionsCheckboxGrid input[type='checkbox']");
+      checkboxes.forEach(cb => {
+        cb.checked = (u.sections && u.sections.includes(cb.value));
+      });
+    }
+  } else {
+    document.getElementById("uaUsername").value = "";
+    document.getElementById("uaName").value = "";
+    document.getElementById("uaPassword").value = "";
+    document.getElementById("uaRole").value = "Staff";
+    document.getElementById("uaActiveStatus").checked = true;
+    const checkboxes = document.querySelectorAll("#uaSectionsCheckboxGrid input[type='checkbox']");
+    checkboxes.forEach(cb => { cb.checked = true; });
+  }
+
+  modal.classList.remove("hidden");
+}
+
+function editUserAccount(userId) {
+  openUserAuthModal(userId);
+}
+
+function closeUserAuthModal() {
+  const modal = document.getElementById("modal-user-auth");
+  if (modal) modal.classList.add("hidden");
+}
+
+function handleUserAuthSubmit(e) {
+  e.preventDefault();
+  const userId = document.getElementById("uaUserId").value;
+  const username = document.getElementById("uaUsername").value.trim();
+  const name = document.getElementById("uaName").value.trim();
+  const password = document.getElementById("uaPassword").value;
+  const role = document.getElementById("uaRole").value;
+  const active = document.getElementById("uaActiveStatus").checked;
+
+  const checkboxes = document.querySelectorAll("#uaSectionsCheckboxGrid input[type='checkbox']:checked");
+  const selectedSections = Array.from(checkboxes).map(cb => cb.value);
+
+  const payload = {
+    username,
+    name,
+    password,
+    role,
+    active,
+    sections: selectedSections,
+    updated_at: Date.now()
+  };
+
+  if (window.opsDB) {
+    const key = userId || sanitizeFbKey(username);
+    opsDB.ref(`users_auth/${key}`).set(payload)
+      .then(() => {
+        showToast("✅ User account and section permissions saved successfully!", "success");
+        closeUserAuthModal();
+      })
+      .catch(err => {
+        console.error(err);
+        showToast("Error saving user permissions", "error");
+      });
+  } else {
+    if (userId) {
+      const idx = store.usersAuth.findIndex(u => String(u.id) === String(userId));
+      if (idx !== -1) store.usersAuth[idx] = { id: userId, ...payload };
+    } else {
+      store.usersAuth.push({ id: sanitizeFbKey(username), ...payload });
+    }
+    showToast("✅ User permissions updated locally", "success");
+    closeUserAuthModal();
+    renderUserAuthManagement();
+  }
+}
+
+function toggleUserStatus(userId) {
+  const u = (store.usersAuth || []).find(item => String(item.id) === String(userId));
+  if (!u) return;
+  const newStatus = !u.active;
+  if (window.opsDB) {
+    opsDB.ref(`users_auth/${userId}/active`).set(newStatus)
+      .then(() => showToast(`User account ${newStatus ? 'enabled' : 'disabled'}`, 'info'))
+      .catch(err => console.error(err));
+  } else {
+    u.active = newStatus;
+    renderUserAuthManagement();
+  }
+}
+
+function deleteUserAccount(userId) {
+  if (!confirm("Are you sure you want to delete this user account?")) return;
+  if (window.opsDB) {
+    opsDB.ref(`users_auth/${userId}`).remove()
+      .then(() => showToast("User account deleted", "info"))
+      .catch(err => console.error(err));
+  } else {
+    store.usersAuth = store.usersAuth.filter(u => String(u.id) !== String(userId));
+    renderUserAuthManagement();
+  }
 }
