@@ -162,6 +162,7 @@ const store = {
   housingProjects: {},
   otherBases: {},
   adminStaffDuties: {},
+  dailyEvaluations: [],
   tempDrafts: {}, // ── Loaded from Firebase DB #2 (operations database) ──
   workOrders: [],
   jobCards: [],
@@ -621,6 +622,19 @@ function initLongTermDeploymentsListeners() {
     store.adminStaffDuties = snapshot.val() || {};
     renderDashboard();
     renderProjectsList();
+  });
+  opsDB.ref("daily_evaluations").on("value", (snapshot) => {
+    const val = snapshot.val() || {};
+    store.dailyEvaluations = Object.entries(val).map(([k, v]) => ({ id: k, ...v }));
+    if (store.currentView === "fusioncenter") renderFusionCenter();
+  });
+  opsDB.ref("users_auth").on("value", (snapshot) => {
+    const val = snapshot.val();
+    if (val) {
+      store.usersAuth = Object.entries(val).map(([k, u]) => ({ id: k, ...u }));
+      renderUserAuthManagement();
+      if (store.currentView === "fusioncenter") renderFusionCenter();
+    }
   });
   sailorsDB.ref("temp_drafts").on("value", (snapshot) => {
     store.tempDrafts = snapshot.val() || {};
@@ -15115,9 +15129,15 @@ function isCurrentDayHoliday(dateObj = new Date()) {
 
 // ==================== FUSION CENTER (COMMAND & CONTROL CENTER) ====================
 
+function normalizeSectionKey(key) {
+  if (!key) return "";
+  return String(key).toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
 function renderFusionCenter() {
   const sectionSelect = document.getElementById("fusionSectionSelect");
   const selectedSection = sectionSelect ? sectionSelect.value : "A-Zone";
+  const targetNormKey = normalizeSectionKey(selectedSection);
 
   const titleEl = document.getElementById("fusionActiveSectionTitle");
   if (titleEl) titleEl.textContent = selectedSection.replace(/-/g, " ");
@@ -15131,7 +15151,12 @@ function renderFusionCenter() {
     { id: '2', username: 'EC124913', name: 'CPO Sanjeewa Bandara', role: 'Artificer', active: true, sections: [selectedSection] }
   ];
 
-  const authorizedUsers = allUsers.filter(u => u.active && (u.role === 'OIC' || (u.sections && u.sections.includes(selectedSection))));
+  const authorizedUsers = allUsers.filter(u => {
+    if (!u.active) return false;
+    if (u.role === 'OIC') return true;
+    if (!u.sections || u.sections.length === 0) return true;
+    return u.sections.some(sec => normalizeSectionKey(sec) === targetNormKey);
+  });
 
   if (usersCountEl) usersCountEl.textContent = `${authorizedUsers.length} Authorized Users`;
   if (usersGrid) {
@@ -15151,7 +15176,11 @@ function renderFusionCenter() {
   }
 
   // 2. Module 1: Daily Detailing
-  const activeWos = (store.workOrders || []).filter(wo => (wo.status === 'Active' || wo.status === 'Pending') && (wo.zone_id === selectedSection || selectedSection === 'Admin-&-Staff-Duties'));
+  const activeWos = (store.workOrders || []).filter(wo => {
+    if (wo.status !== 'Active' && wo.status !== 'Pending') return false;
+    if (!wo.zone_id) return true;
+    return normalizeSectionKey(wo.zone_id) === targetNormKey || targetNormKey.includes('admin');
+  });
   const detailingCountEl = document.getElementById("fusionDetailingCount");
   if (detailingCountEl) detailingCountEl.textContent = `${activeWos.length} Active Jobs/Tasks`;
   const detailingContainer = document.getElementById("fusionDetailingContent");
@@ -15172,7 +15201,10 @@ function renderFusionCenter() {
   }
 
   // 3. Module 2: Estimating Works
-  const activeEsts = (store.estimates || []).filter(e => !selectedSection || e.zone_id === selectedSection || selectedSection === 'Admin-&-Staff-Duties');
+  const activeEsts = (store.estimates || []).filter(e => {
+    if (!e.zone_id) return true;
+    return normalizeSectionKey(e.zone_id) === targetNormKey || targetNormKey.includes('admin');
+  });
   const estCountEl = document.getElementById("fusionEstimatesCount");
   if (estCountEl) estCountEl.textContent = `${activeEsts.length} Estimates`;
   const estContainer = document.getElementById("fusionEstimatesContent");
@@ -15193,7 +15225,10 @@ function renderFusionCenter() {
   }
 
   // 4. Module 3: Job Card Maintenance
-  const activeJcs = (store.jobCards || []).filter(jc => jc.zone_id === selectedSection || selectedSection === 'Admin-&-Staff-Duties');
+  const activeJcs = (store.jobCards || []).filter(jc => {
+    if (!jc.zone_id) return true;
+    return normalizeSectionKey(jc.zone_id) === targetNormKey || targetNormKey.includes('admin');
+  });
   const jcCountEl = document.getElementById("fusionJobCardsCount");
   if (jcCountEl) jcCountEl.textContent = `${activeJcs.length} Cards`;
   const jcContainer = document.getElementById("fusionJobCardsContent");
@@ -15214,7 +15249,10 @@ function renderFusionCenter() {
   }
 
   // 5. Module 4: Inventory Stock Movements (On-Charge & Off-Charge)
-  const invItems = (store.inventory || []).filter(i => !i.zone_id || i.zone_id === selectedSection || selectedSection === 'Admin-&-Staff-Duties');
+  const invItems = (store.inventory || []).filter(i => {
+    if (!i.zone_id) return true;
+    return normalizeSectionKey(i.zone_id) === targetNormKey || targetNormKey.includes('admin');
+  });
   const invContainer = document.getElementById("fusionInventoryContent");
   if (invContainer) {
     if (invItems.length === 0) {
@@ -15233,7 +15271,10 @@ function renderFusionCenter() {
   }
 
   // 6. Module 5: Daily Evaluations & White/Black Marks
-  const evals = (store.dailyEvaluations || []).filter(e => e.zone_id === selectedSection || selectedSection === 'Admin-&-Staff-Duties');
+  const evals = (store.dailyEvaluations || []).filter(e => {
+    if (!e.zone_id) return true;
+    return normalizeSectionKey(e.zone_id) === targetNormKey || targetNormKey.includes('admin');
+  });
   const evalCountEl = document.getElementById("fusionEvaluationCount");
   if (evalCountEl) evalCountEl.textContent = `${evals.length} Evals Logged`;
   const evalContainer = document.getElementById("fusionEvaluationContent");
