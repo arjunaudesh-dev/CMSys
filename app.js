@@ -13408,6 +13408,252 @@ function renderPerformanceAnalyserSection() {
   }
 }
 
+// ==================== WHITE BOARD & BLACK BOARD SYSTEM ====================
+
+store.whiteBoardSort = store.whiteBoardSort || { field: 'points', dir: 'desc' };
+store.blackBoardSort = store.blackBoardSort || { field: 'points', dir: 'desc' };
+store.perfActiveTab = store.perfActiveTab || 'overview';
+
+function switchPerformanceTab(tab) {
+  store.perfActiveTab = tab;
+
+  const vOverview = document.getElementById('perfViewOverview');
+  const vWhite = document.getElementById('perfViewWhiteBoard');
+  const vBlack = document.getElementById('perfViewBlackBoard');
+
+  const btnOverview = document.getElementById('perfTabOverview');
+  const btnWhite = document.getElementById('perfTabWhiteBoard');
+  const btnBlack = document.getElementById('perfTabBlackBoard');
+
+  [vOverview, vWhite, vBlack].forEach(v => { if (v) v.classList.add('hidden'); });
+  [btnOverview, btnWhite, btnBlack].forEach(b => {
+    if (b) {
+      b.classList.remove('bg-slate-800', 'text-teal-300', 'shadow-sm');
+      b.classList.add('bg-white', 'text-slate-700', 'hover:bg-slate-200');
+    }
+  });
+
+  if (tab === 'whiteboard') {
+    if (vWhite) vWhite.classList.remove('hidden');
+    if (btnWhite) {
+      btnWhite.classList.remove('bg-white', 'text-slate-700', 'hover:bg-slate-200');
+      btnWhite.classList.add('bg-slate-800', 'text-teal-300', 'shadow-sm');
+    }
+    renderWhiteBoardTable();
+  } else if (tab === 'blackboard') {
+    if (vBlack) vBlack.classList.remove('hidden');
+    if (btnBlack) {
+      btnBlack.classList.remove('bg-white', 'text-slate-700', 'hover:bg-slate-200');
+      btnBlack.classList.add('bg-slate-800', 'text-teal-300', 'shadow-sm');
+    }
+    renderBlackBoardTable();
+  } else {
+    if (vOverview) vOverview.classList.remove('hidden');
+    if (btnOverview) {
+      btnOverview.classList.remove('bg-white', 'text-slate-700', 'hover:bg-slate-200');
+      btnOverview.classList.add('bg-slate-800', 'text-teal-300', 'shadow-sm');
+    }
+  }
+}
+
+function getWhiteBoardSailors() {
+  return (store.sailors || []).filter(s => {
+    const pts = parseInt(s.white_mark_points || 0);
+    const count = parseInt(s.white_mark_count || 0);
+    const hasLog = (s.white_mark_log && s.white_mark_log.length > 0);
+    return pts > 0 || count > 0 || hasLog;
+  });
+}
+
+function getBlackBoardSailors() {
+  return (store.sailors || []).filter(s => {
+    const pts = parseInt(s.black_mark_points || 0);
+    const count = parseInt(s.black_mark_count || 0);
+    const hasLog = (s.black_mark_log && s.black_mark_log.length > 0);
+    return pts > 0 || count > 0 || hasLog;
+  });
+}
+
+function sortWhiteBoardTable(field) {
+  if (store.whiteBoardSort.field === field) {
+    store.whiteBoardSort.dir = store.whiteBoardSort.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    store.whiteBoardSort.field = field;
+    store.whiteBoardSort.dir = 'desc';
+  }
+  renderWhiteBoardTable();
+}
+
+function sortBlackBoardTable(field) {
+  if (store.blackBoardSort.field === field) {
+    store.blackBoardSort.dir = store.blackBoardSort.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    store.blackBoardSort.field = field;
+    store.blackBoardSort.dir = 'desc';
+  }
+  renderBlackBoardTable();
+}
+
+function renderWhiteBoardTable() {
+  const container = document.getElementById('whiteBoardTableBody');
+  if (!container) return;
+
+  let list = getWhiteBoardSailors();
+  const searchVal = (document.getElementById('searchWhiteBoard') || {}).value || '';
+  if (searchVal.trim()) {
+    const q = searchVal.toLowerCase();
+    list = list.filter(s =>
+      (s.name || '').toLowerCase().includes(q) ||
+      (s.official_number || '').toLowerCase().includes(q) ||
+      (s.trade || '').toLowerCase().includes(q)
+    );
+  }
+
+  // Update badge count
+  const badgeCount = document.getElementById('whiteBoardBadgeCount');
+  if (badgeCount) badgeCount.textContent = list.length;
+
+  // Sorting
+  const { field, dir } = store.whiteBoardSort;
+  const mod = dir === 'asc' ? 1 : -1;
+  list.sort((a, b) => {
+    if (field === 'offno') return (a.official_number || '').localeCompare(b.official_number || '') * mod;
+    if (field === 'name') return (a.name || '').localeCompare(b.name || '') * mod;
+    if (field === 'trade') return (a.trade || '').localeCompare(b.trade || '') * mod;
+    if (field === 'marks') return ((a.white_mark_count || 1) - (b.white_mark_count || 1)) * mod;
+    if (field === 'points') return ((a.white_mark_points || 0) - (b.white_mark_points || 0)) * mod;
+    if (field === 'leave') return (Math.floor((a.white_mark_points || 0) / 10) - Math.floor((b.white_mark_points || 0) / 10)) * mod;
+    if (field === 'date') {
+      const dateA = a.white_mark_log && a.white_mark_log.length > 0 ? a.white_mark_log[a.white_mark_log.length - 1].date : '';
+      const dateB = b.white_mark_log && b.white_mark_log.length > 0 ? b.white_mark_log[b.white_mark_log.length - 1].date : '';
+      return dateA.localeCompare(dateB) * mod;
+    }
+    return ((b.white_mark_points || 0) - (a.white_mark_points || 0));
+  });
+
+  if (list.length === 0) {
+    container.innerHTML = `
+      <tr>
+        <td colspan="8" class="text-center py-8 text-slate-400 italic text-xs">
+          ⚪ No White Board commendations recorded yet.
+        </td>
+      </tr>`;
+    return;
+  }
+
+  container.innerHTML = list.map(s => {
+    const pts = parseInt(s.white_mark_points || 20);
+    const count = parseInt(s.white_mark_count || 1);
+    const extraLeave = Math.floor(pts / 10);
+    const lastLog = (s.white_mark_log && s.white_mark_log.length > 0) ? s.white_mark_log[s.white_mark_log.length - 1] : null;
+    const reason = lastLog ? lastLog.reason : 'Exceptional productivity & duty commendation';
+    const dateStr = lastLog ? lastLog.date : '2026-08-01';
+    const officer = lastLog ? lastLog.evaluator : 'OIC / Command';
+
+    return `
+      <tr class="hover:bg-slate-50 transition-colors border-b border-slate-100">
+        <td class="py-3 px-3.5 font-mono font-extrabold text-teal-700">${s.official_number}</td>
+        <td class="py-3 px-3.5">
+          <p class="font-extrabold text-slate-800 hover:underline cursor-pointer text-teal-700" onclick="openSailorProfile('${s.id}')">${s.rank} ${s.name}</p>
+        </td>
+        <td class="py-3 px-3.5"><span class="px-2 py-0.5 bg-slate-800 text-teal-300 font-extrabold rounded text-[10px]">${s.trade}</span></td>
+        <td class="py-3 px-3.5 text-center font-extrabold text-slate-800">${count} Mark${count > 1 ? 's' : ''}</td>
+        <td class="py-3 px-3.5 text-center font-black text-emerald-600">+${pts} Pts</td>
+        <td class="py-3 px-3.5 text-center"><span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-black rounded-full text-xs">+${extraLeave} Extra Days</span></td>
+        <td class="py-3 px-3.5 text-slate-600 italic text-[11px] max-w-xs truncate" title="${reason}">${reason}</td>
+        <td class="py-3 px-3.5 text-right font-mono text-[11px] text-slate-500">
+          <span class="block font-bold text-slate-700">${dateStr}</span>
+          <span class="block text-[10px] text-teal-600 font-semibold">${officer}</span>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function filterWhiteBoardTable() {
+  renderWhiteBoardTable();
+}
+
+function renderBlackBoardTable() {
+  const container = document.getElementById('blackBoardTableBody');
+  if (!container) return;
+
+  let list = getBlackBoardSailors();
+  const searchVal = (document.getElementById('searchBlackBoard') || {}).value || '';
+  if (searchVal.trim()) {
+    const q = searchVal.toLowerCase();
+    list = list.filter(s =>
+      (s.name || '').toLowerCase().includes(q) ||
+      (s.official_number || '').toLowerCase().includes(q) ||
+      (s.trade || '').toLowerCase().includes(q)
+    );
+  }
+
+  // Update badge count
+  const badgeCount = document.getElementById('blackBoardBadgeCount');
+  if (badgeCount) badgeCount.textContent = list.length;
+
+  // Sorting
+  const { field, dir } = store.blackBoardSort;
+  const mod = dir === 'asc' ? 1 : -1;
+  list.sort((a, b) => {
+    if (field === 'offno') return (a.official_number || '').localeCompare(b.official_number || '') * mod;
+    if (field === 'name') return (a.name || '').localeCompare(b.name || '') * mod;
+    if (field === 'trade') return (a.trade || '').localeCompare(b.trade || '') * mod;
+    if (field === 'marks') return ((a.black_mark_count || 1) - (b.black_mark_count || 1)) * mod;
+    if (field === 'points') return ((a.black_mark_points || 0) - (b.black_mark_points || 0)) * mod;
+    if (field === 'leave') return (Math.floor((a.black_mark_points || 0) / 10) - Math.floor((b.black_mark_points || 0) / 10)) * mod;
+    if (field === 'date') {
+      const dateA = a.black_mark_log && a.black_mark_log.length > 0 ? a.black_mark_log[a.black_mark_log.length - 1].date : '';
+      const dateB = b.black_mark_log && b.black_mark_log.length > 0 ? b.black_mark_log[b.black_mark_log.length - 1].date : '';
+      return dateA.localeCompare(dateB) * mod;
+    }
+    return ((b.black_mark_points || 0) - (a.black_mark_points || 0));
+  });
+
+  if (list.length === 0) {
+    container.innerHTML = `
+      <tr>
+        <td colspan="8" class="text-center py-8 text-slate-400 italic text-xs">
+          ⚫ No Black Board disciplinary records logged.
+        </td>
+      </tr>`;
+    return;
+  }
+
+  container.innerHTML = list.map(s => {
+    const pts = parseInt(s.black_mark_points || 10);
+    const count = parseInt(s.black_mark_count || 1);
+    const daysDeducted = Math.floor(pts / 10);
+    const lastLog = (s.black_mark_log && s.black_mark_log.length > 0) ? s.black_mark_log[s.black_mark_log.length - 1] : null;
+    const reason = lastLog ? lastLog.reason : 'Disciplinary deduction / duty negligence penalty';
+    const dateStr = lastLog ? lastLog.date : '2026-08-02';
+    const officer = lastLog ? lastLog.evaluator : 'OIC / Command';
+
+    return `
+      <tr class="hover:bg-slate-50 transition-colors border-b border-slate-100">
+        <td class="py-3 px-3.5 font-mono font-extrabold text-rose-700">${s.official_number}</td>
+        <td class="py-3 px-3.5">
+          <p class="font-extrabold text-slate-800 hover:underline cursor-pointer text-teal-700" onclick="openSailorProfile('${s.id}')">${s.rank} ${s.name}</p>
+        </td>
+        <td class="py-3 px-3.5"><span class="px-2 py-0.5 bg-slate-800 text-teal-300 font-extrabold rounded text-[10px]">${s.trade}</span></td>
+        <td class="py-3 px-3.5 text-center font-extrabold text-slate-800">${count} Mark${count > 1 ? 's' : ''}</td>
+        <td class="py-3 px-3.5 text-center font-black text-rose-600">-${pts} Pts</td>
+        <td class="py-3 px-3.5 text-center"><span class="px-2 py-0.5 bg-rose-100 text-rose-800 font-black rounded-full text-xs">-${daysDeducted} Days</span></td>
+        <td class="py-3 px-3.5 text-slate-600 italic text-[11px] max-w-xs truncate" title="${reason}">${reason}</td>
+        <td class="py-3 px-3.5 text-right font-mono text-[11px] text-slate-500">
+          <span class="block font-bold text-slate-700">${dateStr}</span>
+          <span class="block text-[10px] text-rose-600 font-semibold">${officer}</span>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function filterBlackBoardTable() {
+  renderBlackBoardTable();
+}
+
 // ==================== PERFORMANCE EVALUATION MODAL LOGIC ====================
 
 function openEvaluationModal(sailorId) {
@@ -13512,12 +13758,21 @@ function handleSailorEvaluationSubmit(e) {
   const comments = document.getElementById('evalComments').value || '';
   const reason = document.getElementById('evalReasonInput').value || '';
 
+  const whitePts = parseInt(document.getElementById('evalWhiteMarkPoints').value || '0');
+  const whiteReason = document.getElementById('evalWhiteMarkReason').value || '';
+  const blackPts = parseInt(document.getElementById('evalBlackMarkPoints').value || '0');
+  const blackReason = document.getElementById('evalBlackMarkReason').value || '';
+
   const avgScore = (q + ef + d + m + a + s) / 6.0;
+
+  const targetSailor = store.sailors.find(sal => String(sal.id) === String(sailorId) || String(sal._fbKey) === String(sailorId));
+  const evaluatorName = store.currentUser ? store.currentUser.name : 'OIC / Command';
 
   const payload = {
     date: evalDate,
     sailor_id: sailorId,
     supervisor_id: store.currentUser ? store.currentUser.id : 1,
+    evaluator_name: evaluatorName,
     work_order_id: woId,
     quality_score: q,
     efficiency_score: ef,
@@ -13525,6 +13780,10 @@ function handleSailorEvaluationSubmit(e) {
     material_score: m,
     attitude_score: a,
     skill_score: s,
+    white_mark_points: whitePts,
+    white_mark_reason: whiteReason,
+    black_mark_points: blackPts,
+    black_mark_reason: blackReason,
     comment: comments,
     score_1_reason: (q === 1 || ef === 1 || d === 1) ? reason : null,
     score_2_reason: (q === 2 || ef === 2 || d === 2) ? reason : null,
@@ -13550,10 +13809,34 @@ function handleSailorEvaluationSubmit(e) {
   }
 
   // 3. Local Store Update
-  const targetSailor = store.sailors.find(sal => String(sal.id) === String(sailorId) || String(sal._fbKey) === String(sailorId));
   if (targetSailor) {
     targetSailor.avgScore = avgScore;
     targetSailor.performance_score = avgScore;
+
+    if (!targetSailor.white_mark_log) targetSailor.white_mark_log = [];
+    if (!targetSailor.black_mark_log) targetSailor.black_mark_log = [];
+
+    if (whitePts > 0) {
+      targetSailor.white_mark_points = (targetSailor.white_mark_points || 0) + whitePts;
+      targetSailor.white_mark_count = (targetSailor.white_mark_count || 0) + 1;
+      targetSailor.white_mark_log.push({
+        date: evalDate,
+        points: whitePts,
+        reason: whiteReason || 'Commendation for exceptional duty execution',
+        evaluator: evaluatorName
+      });
+    }
+
+    if (blackPts > 0) {
+      targetSailor.black_mark_points = (targetSailor.black_mark_points || 0) + blackPts;
+      targetSailor.black_mark_count = (targetSailor.black_mark_count || 0) + 1;
+      targetSailor.black_mark_log.push({
+        date: evalDate,
+        points: blackPts,
+        reason: blackReason || 'Disciplinary deduction',
+        evaluator: evaluatorName
+      });
+    }
   }
 
   showToast(`✅ Evaluation saved for ${targetSailor ? targetSailor.name : 'sailor'} (Score: ${avgScore.toFixed(2)})`, 'success');
@@ -13655,14 +13938,35 @@ function openSailorProfile(sailorId) {
   // 2. Render Performance Score Infographic
   renderProfilePerformanceInfographic(sailor);
 
-  // Points & Leave Days
-  document.getElementById("profTotalPoints").textContent = points;
-  document.getElementById("profLeaveDays").textContent = leaveDays;
+  // 30-Day Average Performance Score & White / Black Marks Calculation
+  const avg30Days = parseFloat(sailor.avgScore || sailor.performance_score || 7.50).toFixed(2);
+  const elAvg30 = document.getElementById("profAvgScore30Days");
+  if (elAvg30) elAvg30.textContent = avg30Days;
+
+  // White Marks & Black Marks
+  const whitePts = parseInt(sailor.white_mark_points || 0);
+  const blackPts = parseInt(sailor.black_mark_points || 0);
+  const whiteDays = Math.floor(whitePts / 10);
+  const blackDays = Math.floor(blackPts / 10);
+
+  const baseLeaveDays = Math.floor(points / 10);
+  const netLeaveDays = Math.max(0, baseLeaveDays + whiteDays - blackDays);
+
+  const elLeaveDays = document.getElementById("profLeaveDays");
+  if (elLeaveDays) elLeaveDays.textContent = netLeaveDays;
+
+  const elWhiteBadge = document.getElementById("profWhiteMarksBadge");
+  if (elWhiteBadge) elWhiteBadge.textContent = `⚪ +${whitePts} Pts (+${whiteDays} Days)`;
+
+  const elBlackBadge = document.getElementById("profBlackMarksBadge");
+  if (elBlackBadge) elBlackBadge.textContent = `⚫ -${blackPts} Pts (-${blackDays} Days)`;
 
   // Progress Bar to Next Leave Day
   const progressVal = points % 10;
-  document.getElementById("profNextLeaveProgressText").textContent = `${progressVal} / 10 Points`;
-  document.getElementById("profNextLeaveProgressBar").style.width = `${progressVal * 10}%`;
+  const elProgText = document.getElementById("profNextLeaveProgressText");
+  if (elProgText) elProgText.textContent = `${progressVal} / 10 Points`;
+  const elProgBar = document.getElementById("profNextLeaveProgressBar");
+  if (elProgBar) elProgBar.style.width = `${progressVal * 10}%`;
 
   // Profile Photo
   const cleanNo = sailor.official_number ? sailor.official_number.replace(/[^a-zA-Z0-9]/g, "") : "";

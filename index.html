@@ -2626,16 +2626,34 @@
 
             <!-- ==================== SECTION 2: PERFORMANCE ANALYSER ==================== -->
             <div id="sailor-section-performance" class="hidden space-y-6">
-                <!-- Analyser Control Toolbar -->
+                <!-- Analyser Control & View Selector Toolbar -->
                 <div class="glass-card p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
                     <div>
                         <h3 class="text-base font-extrabold text-slate-800 flex items-center gap-2">
                             <span>📊 Performance Analysing Center</span>
                         </h3>
-                        <p class="text-xs text-slate-500">Analyze sailor evaluations by Zone, Project, and Trade</p>
+                        <p class="text-xs text-slate-500">Analyze performance, commendation White Boards, and disciplinary Black Boards</p>
                     </div>
                     
-                    <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                    <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                        <!-- Sub-Nav Tabs -->
+                        <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                            <button onclick="switchPerformanceTab('overview')" id="perfTabOverview"
+                                class="px-3 py-1.5 rounded-lg text-xs font-extrabold bg-slate-800 text-teal-300 shadow-sm transition-all">
+                                📊 Overview
+                            </button>
+                            <button onclick="switchPerformanceTab('whiteboard')" id="perfTabWhiteBoard"
+                                class="px-3 py-1.5 rounded-lg text-xs font-extrabold bg-white text-slate-700 hover:bg-slate-200 transition-all flex items-center gap-1">
+                                <span>⚪ White Board</span>
+                                <span class="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 rounded-full text-[10px]" id="whiteBoardBadgeCount">0</span>
+                            </button>
+                            <button onclick="switchPerformanceTab('blackboard')" id="perfTabBlackBoard"
+                                class="px-3 py-1.5 rounded-lg text-xs font-extrabold bg-white text-slate-700 hover:bg-slate-200 transition-all flex items-center gap-1">
+                                <span>⚫ Black Board</span>
+                                <span class="px-1.5 py-0.2 bg-rose-100 text-rose-800 rounded-full text-[10px]" id="blackBoardBadgeCount">0</span>
+                            </button>
+                        </div>
+
                         <!-- Zone Filter -->
                         <select id="perfFilterZone" onchange="renderPerformanceAnalyserSection()"
                             class="px-3 py-1.5 border border-slate-300 rounded-xl text-xs font-semibold bg-slate-50 focus:bg-white">
@@ -2660,6 +2678,9 @@
                         </select>
                     </div>
                 </div>
+
+                <!-- VIEW 1: OVERVIEW ANALYTICS -->
+                <div id="perfViewOverview" class="space-y-6">
 
                 <!-- KPI Metric Summary Cards -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -2760,6 +2781,90 @@
                         </h4>
                         <div id="perfTradeBarsContainer" class="space-y-3 pt-1">
                             <!-- Dynamic Bar Indicators -->
+                        </div>
+                    </div>
+                </div>
+                </div>
+                <!-- END VIEW 1: OVERVIEW -->
+
+                <!-- VIEW 2: WHITE BOARD (COMMENDATION HONOR ROLL) -->
+                <div id="perfViewWhiteBoard" class="hidden space-y-4">
+                    <div class="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
+                        <div class="flex flex-col sm:flex-row items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-xl">
+                                    ⚪
+                                </div>
+                                <div>
+                                    <h4 class="font-extrabold text-slate-800 text-sm">White Board — Commendations & Extra Leave Registry</h4>
+                                    <p class="text-xs text-slate-500">Registry of sailors awarded White Marks (Bonus Points & Extra Leave Days)</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input type="text" id="searchWhiteBoard" onkeyup="filterWhiteBoardTable()" placeholder="Search White Board sailors..." class="px-3 py-1.5 border border-slate-300 rounded-xl text-xs bg-slate-50 focus:bg-white w-48">
+                            </div>
+                        </div>
+
+                        <!-- White Board Table -->
+                        <div class="overflow-x-auto border border-slate-200 rounded-2xl">
+                            <table class="w-full text-left text-xs border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-900 text-white font-bold border-b border-slate-800">
+                                        <th class="py-3 px-3.5 cursor-pointer hover:bg-slate-800" onclick="sortWhiteBoardTable('offno')">Off No ↕</th>
+                                        <th class="py-3 px-3.5 cursor-pointer hover:bg-slate-800" onclick="sortWhiteBoardTable('name')">Sailor Name & Rank ↕</th>
+                                        <th class="py-3 px-3.5 cursor-pointer hover:bg-slate-800" onclick="sortWhiteBoardTable('trade')">Trade ↕</th>
+                                        <th class="py-3 px-3.5 text-center cursor-pointer hover:bg-slate-800" onclick="sortWhiteBoardTable('marks')">White Marks ↕</th>
+                                        <th class="py-3 px-3.5 text-center cursor-pointer hover:bg-slate-800" onclick="sortWhiteBoardTable('points')">Bonus Points ↕</th>
+                                        <th class="py-3 px-3.5 text-center cursor-pointer hover:bg-slate-800" onclick="sortWhiteBoardTable('leave')">Extra Leave Earned ↕</th>
+                                        <th class="py-3 px-3.5">Commendation Remarks / Reason</th>
+                                        <th class="py-3 px-3.5 text-right cursor-pointer hover:bg-slate-800" onclick="sortWhiteBoardTable('date')">Awarded Date & Officer ↕</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="whiteBoardTableBody" class="divide-y divide-slate-100 bg-white">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIEW 3: BLACK BOARD (DISCIPLINARY REGISTRY) -->
+                <div id="perfViewBlackBoard" class="hidden space-y-4">
+                    <div class="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
+                        <div class="flex flex-col sm:flex-row items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-xl">
+                                    ⚫
+                                </div>
+                                <div>
+                                    <h4 class="font-extrabold text-slate-800 text-sm">Black Board — Disciplinary & Penalty Deductions Registry</h4>
+                                    <p class="text-xs text-slate-500">Registry of sailors issued Black Marks (Penalty Points & Deducted Leave Days)</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input type="text" id="searchBlackBoard" onkeyup="filterBlackBoardTable()" placeholder="Search Black Board sailors..." class="px-3 py-1.5 border border-slate-300 rounded-xl text-xs bg-slate-50 focus:bg-white w-48">
+                            </div>
+                        </div>
+
+                        <!-- Black Board Table -->
+                        <div class="overflow-x-auto border border-slate-200 rounded-2xl">
+                            <table class="w-full text-left text-xs border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-900 text-white font-bold border-b border-slate-800">
+                                        <th class="py-3 px-3.5 cursor-pointer hover:bg-slate-800" onclick="sortBlackBoardTable('offno')">Off No ↕</th>
+                                        <th class="py-3 px-3.5 cursor-pointer hover:bg-slate-800" onclick="sortBlackBoardTable('name')">Sailor Name & Rank ↕</th>
+                                        <th class="py-3 px-3.5 cursor-pointer hover:bg-slate-800" onclick="sortBlackBoardTable('trade')">Trade ↕</th>
+                                        <th class="py-3 px-3.5 text-center cursor-pointer hover:bg-slate-800" onclick="sortBlackBoardTable('marks')">Black Marks ↕</th>
+                                        <th class="py-3 px-3.5 text-center cursor-pointer hover:bg-slate-800" onclick="sortBlackBoardTable('points')">Penalty Points ↕</th>
+                                        <th class="py-3 px-3.5 text-center cursor-pointer hover:bg-slate-800" onclick="sortBlackBoardTable('leave')">Leave Deducted ↕</th>
+                                        <th class="py-3 px-3.5">Disciplinary Reason / Remarks</th>
+                                        <th class="py-3 px-3.5 text-right cursor-pointer hover:bg-slate-800" onclick="sortBlackBoardTable('date')">Imposed Date & Officer ↕</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="blackBoardTableBody" class="divide-y divide-slate-100 bg-white">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -2875,6 +2980,49 @@
                         <span class="text-xs font-extrabold px-3 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 rounded-xl" id="lbl-performance-tier">
                             ★ High Performer
                         </span>
+                    </div>
+
+                    <!-- OIC Official Marks & Leave Adjustments (OIC / Officers Only) -->
+                    <div id="oicMarksSection" class="p-3.5 bg-slate-900 text-white rounded-2xl border border-slate-800 space-y-3 shadow-md">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="text-base">🎖️</span>
+                                <span class="text-xs font-extrabold text-amber-300 uppercase tracking-wide">OIC Official Marks & Leave Adjustment</span>
+                            </div>
+                            <span class="text-[10px] font-bold px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-400/30 rounded-full">Officers Only</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                            <!-- White Mark (Bonus) -->
+                            <div class="bg-slate-850 p-2.5 rounded-xl border border-emerald-500/30 space-y-1.5">
+                                <label class="block font-bold text-emerald-400 text-[11px] flex items-center justify-between">
+                                    <span>⚪ Award White Mark (Bonus Pts)</span>
+                                    <span class="text-[9px] text-emerald-300 font-normal">10 Pts = +1 Day</span>
+                                </label>
+                                <select id="evalWhiteMarkPoints" class="w-full px-2.5 py-1 bg-slate-950 border border-emerald-500/40 text-emerald-300 rounded-lg text-xs font-bold">
+                                    <option value="0">None (0 Bonus Points)</option>
+                                    <option value="10">⚪ +10 Points (+1 Extra Leave Day)</option>
+                                    <option value="20">⚪ +20 Points (+2 Extra Leave Days)</option>
+                                    <option value="30">⚪ +30 Points (+3 Extra Leave Days)</option>
+                                </select>
+                                <input type="text" id="evalWhiteMarkReason" placeholder="Commendation reason / details..." class="w-full px-2.5 py-1 bg-slate-950 border border-slate-800 text-slate-200 rounded-lg text-[11px]">
+                            </div>
+
+                            <!-- Black Mark (Penalty) -->
+                            <div class="bg-slate-850 p-2.5 rounded-xl border border-rose-500/30 space-y-1.5">
+                                <label class="block font-bold text-rose-400 text-[11px] flex items-center justify-between">
+                                    <span>⚫ Impose Black Mark (Penalty Pts)</span>
+                                    <span class="text-[9px] text-rose-300 font-normal">10 Pts = -1 Day</span>
+                                </label>
+                                <select id="evalBlackMarkPoints" class="w-full px-2.5 py-1 bg-slate-950 border border-rose-500/40 text-rose-300 rounded-lg text-xs font-bold">
+                                    <option value="0">None (0 Penalty Points)</option>
+                                    <option value="10">⚫ -10 Points (-1 Leave Day Deducted)</option>
+                                    <option value="20">⚫ -20 Points (-2 Leave Days Deducted)</option>
+                                    <option value="30">⚫ -30 Points (-3 Leave Days Deducted)</option>
+                                </select>
+                                <input type="text" id="evalBlackMarkReason" placeholder="Disciplinary deduction reason..." class="w-full px-2.5 py-1 bg-slate-950 border border-slate-800 text-slate-200 rounded-lg text-[11px]">
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Justification comments -->
@@ -5332,29 +5480,38 @@
                         </div>
                     </div>
 
-                    <!-- Points & Leave Stats Grid -->
+                    <!-- Average 30-Day Score & Leave Stats Grid -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                        <!-- Points Box -->
-                        <div class="p-4 rounded-2xl border border-teal-500/20 bg-teal-50/30 flex flex-col justify-between">
+                        <!-- 30-Day Average Performance Score Box -->
+                        <div class="p-4 rounded-2xl border border-teal-500/20 bg-teal-50/40 flex flex-col justify-between shadow-sm">
                             <div>
-                                <span class="text-xs font-bold text-teal-800 tracking-wide uppercase">Past 30 Days Points</span>
-                                <p class="text-[11px] text-slate-500 sinhala">පසුගිය දින 30 ක්‍රියාකාරී ලකුණු</p>
+                                <span class="text-xs font-extrabold text-teal-900 tracking-wide uppercase">Average Performance Score in Last 30 Days</span>
+                                <p class="text-[11px] text-slate-500 sinhala">පසුගිය දින 30 සාමාන්‍ය ලකුණ</p>
                             </div>
-                            <div class="flex items-baseline gap-1 mt-3">
-                                <span class="text-3xl font-extrabold text-teal-700" id="profTotalPoints">124</span>
-                                <span class="text-xs text-teal-600 font-bold">Points</span>
+                            <div class="flex items-baseline gap-1.5 mt-3">
+                                <span class="text-3xl font-black text-teal-700" id="profAvgScore30Days">8.20</span>
+                                <span class="text-xs text-teal-600 font-extrabold">/ 10.0 Rating</span>
                             </div>
                         </div>
 
-                        <!-- Leave Days Box -->
-                        <div class="p-4 rounded-2xl border border-indigo-500/20 bg-indigo-50/30 flex flex-col justify-between">
+                        <!-- Leave Extra Earned / Deducted Box (White & Black Marks) -->
+                        <div class="p-4 rounded-2xl border border-indigo-500/20 bg-indigo-50/40 flex flex-col justify-between shadow-sm">
                             <div>
-                                <span class="text-xs font-bold text-indigo-800 tracking-wide uppercase">Leave Days Earned</span>
-                                <p class="text-[11px] text-slate-500 sinhala">හිමිවන නිවාඩු දින ගණන</p>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-extrabold text-indigo-900 tracking-wide uppercase">Leave Extra Earned / Deducted</span>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded-full">10 Pts = 1 Day</span>
+                                </div>
+                                <p class="text-[11px] text-slate-500 sinhala">හිමිවන / අඩු වන නිවාඩු දින (ලකුණු මගින්)</p>
                             </div>
-                            <div class="flex items-baseline gap-1 mt-3">
-                                <span class="text-3xl font-extrabold text-indigo-700" id="profLeaveDays">12</span>
-                                <span class="text-xs text-indigo-600 font-bold">Days</span>
+                            <div class="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 mt-3">
+                                <div class="flex items-baseline gap-1">
+                                    <span class="text-3xl font-black text-indigo-700" id="profLeaveDays">7</span>
+                                    <span class="text-xs text-indigo-600 font-bold">Net Leave Days</span>
+                                </div>
+                                <div class="flex flex-wrap items-center gap-1.5" id="profMarksBadgeContainer">
+                                    <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-sm" id="profWhiteMarksBadge">⚪ +20 Pts (+2 Days)</span>
+                                    <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-rose-100 text-rose-800 border border-rose-300 shadow-sm" id="profBlackMarksBadge">⚫ -10 Pts (-1 Day)</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -5362,12 +5519,12 @@
                     <!-- Progress to Next Leave Day -->
                     <div class="space-y-2 border border-slate-200/80 p-3.5 rounded-2xl bg-slate-50/50">
                         <div class="flex justify-between text-xs font-bold text-slate-600">
-                            <span class="sinhala">ඊළඟ නිවාඩු දිනයට ප්‍රගතිය</span>
-                            <span id="profNextLeaveProgressText">4 / 10 Points</span>
+                            <span class="sinhala">ඊළඟ නිවාඩු දිනයට ප්‍රගතිය (10 Points = 1 Day)</span>
+                            <span id="profNextLeaveProgressText">0 / 10 Points</span>
                         </div>
                         <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden shadow-inner">
                             <div class="bg-gradient-to-r from-teal-500 to-indigo-600 h-full rounded-full transition-all duration-500"
-                                id="profNextLeaveProgressBar" style="width: 40%"></div>
+                                id="profNextLeaveProgressBar" style="width: 0%"></div>
                         </div>
                     </div>
                 </div>
