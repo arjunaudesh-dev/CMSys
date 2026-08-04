@@ -9307,6 +9307,8 @@ function switchSettingsTab(tab) {
     setValue("cfg-lowStockLevel", s.lowStockLevel || 10);
   } else if (tab === "dateschedule") {
     renderDateScheduleCalendar();
+  } else if (tab === "userauth") {
+    renderUserAuthManagement();
   }
 }
 function setValue(id, val) {
