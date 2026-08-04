@@ -161,6 +161,7 @@ const store = {
   outProjects: {},
   housingProjects: {},
   otherBases: {},
+  adminStaffDuties: {},
   tempDrafts: {}, // ── Loaded from Firebase DB #2 (operations database) ──
   workOrders: [],
   jobCards: [],
@@ -613,6 +614,11 @@ function initLongTermDeploymentsListeners() {
   });
   opsDB.ref("other_bases").on("value", (snapshot) => {
     store.otherBases = snapshot.val() || {};
+    renderDashboard();
+    renderProjectsList();
+  });
+  opsDB.ref("admin_staff_duties").on("value", (snapshot) => {
+    store.adminStaffDuties = snapshot.val() || {};
     renderDashboard();
     renderProjectsList();
   });
@@ -8518,18 +8524,20 @@ function renderMonthlyReport() {
   loadMonthlyReport();
 }
 function loadMonthlyReport() {
-  const zoneJobCards = store.jobCards.filter(
-    (jc) => jc.zone_id === store.currentZone,
+  const zoneJobCards = (store.jobCards || []).filter(
+    (jc) => !store.currentZone || store.currentZone === "all" || jc.zone_id === store.currentZone,
   );
   const zoneJobCardIds = new Set(zoneJobCards.map((jc) => String(jc.id)));
-  const zoneLabor = store.jobCardLabor.filter((l) =>
+  const zoneLabor = (store.jobCardLabor || []).filter((l) =>
     zoneJobCardIds.has(String(l.job_card_id)),
   ); // Job Card Costs
   const totalMaterialCost = zoneJobCards.reduce(
-    (sum, jc) => sum + jc.total_material_cost,
+    (sum, jc) => sum + (jc.total_material_cost || 0),
     0,
   );
-  document.getElementById("monthlyJobCardCosts").innerHTML = `
+  const elJobCardCosts = document.getElementById("monthlyJobCardCosts");
+  if (elJobCardCosts) {
+    elJobCardCosts.innerHTML = `
         <div class="grid grid-cols-3 gap-4 mb-4">
             <div class="bg-blue-50 p-4 rounded-lg text-center">
                 <p class="text-2xl font-bold text-blue-600">${zoneJobCards.length}</p>
@@ -8551,30 +8559,35 @@ function loadMonthlyReport() {
                 (jc) => `
                 <div class="flex items-center justify-between p-2 bg-slate-50 rounded">
                     <div>
-                        <span class="mono text-sm text-blue-600">${jc.job_number}</span>
-                        <p class="text-xs text-slate-500 truncate max-w-xs">${jc.description}</p>
+                        <span class="mono text-sm text-blue-600">${jc.job_number || 'JC-00'}</span>
+                        <p class="text-xs text-slate-500 truncate max-w-xs">${jc.description || 'Job Card'}</p>
                     </div>
-                    <span class="font-medium text-green-600">${formatCurrency(jc.total_material_cost)}</span>
+                    <span class="font-medium text-green-600">${formatCurrency(jc.total_material_cost || 0)}</span>
                 </div>
             `,
               )
               .join("")}
         </div>
-    `; // Labor Involvement
-  const totalManDays = zoneLabor.reduce((sum, l) => sum + l.hours / 8, 0);
+    `;
+  }
+
+  // Labor Involvement
+  const totalManDays = zoneLabor.reduce((sum, l) => sum + (l.hours || 8) / 8, 0);
   const laborByTrade = {};
   zoneLabor.forEach((l) => {
-    const sailor = store.sailors.find(
+    const sailor = (store.sailors || []).find(
       (s) =>
         String(s.id) === String(l.sailor_id) ||
         String(s._fbKey) === String(l.sailor_id),
     );
-    if (sailor) {
-      if (!laborByTrade[sailor.trade]) laborByTrade[sailor.trade] = 0;
-      laborByTrade[sailor.trade] += l.hours / 8;
-    }
+    const trade = sailor ? sailor.trade : 'MA';
+    if (!laborByTrade[trade]) laborByTrade[trade] = 0;
+    laborByTrade[trade] += (l.hours || 8) / 8;
   });
-  document.getElementById("monthlyLaborInvolvement").innerHTML = `
+
+  const elLabor = document.getElementById("monthlyLaborInvolvement");
+  if (elLabor) {
+    elLabor.innerHTML = `
         <div class="grid grid-cols-2 gap-4 mb-4">
             <div class="bg-blue-50 p-4 rounded-lg text-center">
                 <p class="text-2xl font-bold text-blue-600">${totalManDays.toFixed(1)}</p>
@@ -8586,14 +8599,15 @@ function loadMonthlyReport() {
             </div>
         </div>
         <div class="space-y-2">
-            ${Object.entries(laborByTrade)
+            ${Object.keys(laborByTrade).length === 0 ? '<p class="text-xs text-slate-400 italic">No labor logged this period.</p>' :
+              Object.entries(laborByTrade)
               .map(
                 ([trade, days]) => `
                 <div class="flex items-center justify-between">
                     <span class="text-sm text-slate-600">${trade}</span>
                     <div class="flex items-center gap-2">
                         <div class="w-32 h-2 bg-slate-200 rounded-full">
-                            <div class="h-2 bg-blue-500 rounded-full" style="width: ${(days / totalManDays) * 100}%"></div>
+                            <div class="h-2 bg-blue-500 rounded-full" style="width: ${totalManDays > 0 ? (days / totalManDays) * 100 : 0}%"></div>
                         </div>
                         <span class="font-medium w-12 text-right">${days.toFixed(1)}</span>
                     </div>
@@ -8602,29 +8616,34 @@ function loadMonthlyReport() {
               )
               .join("")}
         </div>
-    `; // Monthly Top Performers
-  const zoneSailors = store.sailors.filter(
-    (s) => s.zone_assigned === store.currentZone,
-  );
-  const topPerformers = zoneSailors
-    .sort((a, b) => b.avgScore - a.avgScore)
+    `;
+  }
+
+  // Monthly Top Performers
+  const targetSailors = (!store.currentZone || store.currentZone === "all") ? (store.sailors || []) : (store.sailors || []).filter(s => s.zone_assigned === store.currentZone);
+  const topPerformers = [...targetSailors]
+    .sort((a, b) => (b.avgScore || 7.0) - (a.avgScore || 7.0))
     .slice(0, 5);
-  document.getElementById("monthlyTopPerformers").innerHTML = topPerformers
-    .map(
-      (s, i) => `
-        <div class="p-3 flex items-center gap-3">
-            <span class="w-8 h-8 flex items-center justify-center rounded-full ${i === 0 ? "bg-yellow-400" : i === 1 ? "bg-gray-300" : i === 2 ? "bg-amber-600" : "bg-slate-200"} text-white font-bold text-sm">
-                ${i + 1}
-            </span>
-            <div class="flex-1">
-                <p class="font-medium text-slate-700 text-sm">${s.name}</p>
-                <p class="text-xs text-slate-500">${s.trade}</p>
-            </div>
-            <span class="text-lg font-bold ${getPerformanceTextColor(s.avgScore)}">${s.avgScore.toFixed(1)}</span>
-        </div>
-    `,
-    )
-    .join("");
+
+  const elMonthlyTop = document.getElementById("monthlyTopPerformers");
+  if (elMonthlyTop) {
+    elMonthlyTop.innerHTML = topPerformers
+      .map(
+        (s, i) => `
+          <div class="p-3 flex items-center gap-3">
+              <span class="w-8 h-8 flex items-center justify-center rounded-full ${i === 0 ? "bg-yellow-400" : i === 1 ? "bg-gray-300" : i === 2 ? "bg-amber-600" : "bg-slate-200"} text-white font-bold text-sm">
+                  ${i + 1}
+              </span>
+              <div class="flex-1">
+                  <p class="font-medium text-slate-700 text-sm">${s.name}</p>
+                  <p class="text-xs text-slate-500">${s.trade} • ${s.rank}</p>
+              </div>
+              <span class="text-lg font-bold ${getPerformanceTextColor(s.avgScore || 7.0)}">${(s.avgScore || 7.0).toFixed(1)}</span>
+          </div>
+      `,
+      )
+      .join("");
+  }
 }
 function renderInventoryReport() {
   filterInventoryReport();
@@ -14775,6 +14794,7 @@ function renderProjectsList() {
         });
     };
 
+    renderCards(store.adminStaffDuties, "adminStaffDutiesList", "Admin & Staff Duty");
     renderCards(store.outProjects, "outProjectsList", "Out Project");
     renderCards(store.housingProjects, "housingProjectsList", "Housing Project");
     renderCards(store.otherBases, "otherBasesList", "Other Base");
@@ -14799,6 +14819,7 @@ function submitNewProject() {
     if(type === "Out Project") node = "out_projects";
     else if(type === "Housing Project") node = "housing_projects";
     else if(type === "Other Base") node = "other_bases";
+    else if(type === "Admin & Staff Duty") node = "admin_staff_duties";
     
     if(node) {
         opsDB.ref(node).push({
@@ -14824,6 +14845,7 @@ window.deleteProject = function(event, type, id) {
     if(type === "Out Project") node = "out_projects";
     else if(type === "Housing Project") node = "housing_projects";
     else if(type === "Other Base") node = "other_bases";
+    else if(type === "Admin & Staff Duty") node = "admin_staff_duties";
     
     if(node) {
         opsDB.ref(`${node}/${id}`).remove().then(() => {
@@ -14858,6 +14880,7 @@ function renderPtmLists(filter = "") {
     if(currentPtmType === "Out Project") projectsObj = store.outProjects;
     else if(currentPtmType === "Housing Project") projectsObj = store.housingProjects;
     else if(currentPtmType === "Other Base") projectsObj = store.otherBases;
+    else if(currentPtmType === "Admin & Staff Duty") projectsObj = store.adminStaffDuties;
     
     const proj = projectsObj[currentPtmProjectId];
     const assignedIds = proj && proj.assigned_sailors ? Object.keys(proj.assigned_sailors) : [];
@@ -14920,6 +14943,7 @@ function addPtmSailor(sailorId) {
     if(currentPtmType === "Out Project") node = "out_projects";
     else if(currentPtmType === "Housing Project") node = "housing_projects";
     else if(currentPtmType === "Other Base") node = "other_bases";
+    else if(currentPtmType === "Admin & Staff Duty") node = "admin_staff_duties";
     
     opsDB.ref(`${node}/${currentPtmProjectId}/assigned_sailors/${sailorId}`).set(true)
         .then(() => {
@@ -14934,6 +14958,7 @@ function removePtmSailor(sailorId) {
     if(currentPtmType === "Out Project") node = "out_projects";
     else if(currentPtmType === "Housing Project") node = "housing_projects";
     else if(currentPtmType === "Other Base") node = "other_bases";
+    else if(currentPtmType === "Admin & Staff Duty") node = "admin_staff_duties";
     
     opsDB.ref(`${node}/${currentPtmProjectId}/assigned_sailors/${sailorId}`).remove()
         .then(() => {

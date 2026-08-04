@@ -3534,15 +3534,34 @@
         <div id="view-projects" class="view-content hidden">
             <div class="flex justify-between items-center mb-6">
                 <div>
-                    <h2 class="text-2xl font-bold text-slate-800">External Projects & Bases</h2>
-                    <p class="text-sm text-slate-500">Manage Out Projects, Housing Projects, and Other Bases</p>
+                    <h2 class="text-2xl font-bold text-slate-800">Projects, External Bases & Admin Duties</h2>
+                    <p class="text-sm text-slate-500">Manage Out Projects, Housing Projects, Other Bases, and Admin & Staff Duties</p>
+                </div>
+            </div>
+
+            <!-- Admin & Staff Duties -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xl">🏢</span>
+                        <h3 class="text-lg font-bold text-slate-800">Admin & Staff Duties</h3>
+                    </div>
+                    <button onclick="createNewProject('Admin & Staff Duty')"
+                        class="bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all">+
+                        New Admin Duty</button>
+                </div>
+                <div id="adminStaffDutiesList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Cards will be populated here -->
                 </div>
             </div>
 
             <!-- Out Projects -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-bold text-slate-800">Out Projects</h3>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xl">🏗️</span>
+                        <h3 class="text-lg font-bold text-slate-800">Out Projects</h3>
+                    </div>
                     <button onclick="createNewProject('Out Project')"
                         class="bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all">+
                         New Project</button>
@@ -3555,7 +3574,10 @@
             <!-- Housing Projects -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-bold text-slate-800">Housing Projects</h3>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xl">🏠</span>
+                        <h3 class="text-lg font-bold text-slate-800">Housing Projects</h3>
+                    </div>
                     <button onclick="createNewProject('Housing Project')"
                         class="bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all">+
                         New Project</button>
@@ -3567,7 +3589,10 @@
             <!-- Other Bases -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-bold text-slate-800">Other Bases</h3>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xl">⚓</span>
+                        <h3 class="text-lg font-bold text-slate-800">Other Bases</h3>
+                    </div>
                     <button onclick="createNewProject('Other Base')"
                         class="bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all">+
                         New Base</button>
