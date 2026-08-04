@@ -5217,44 +5217,81 @@
                         </div>
                     </div>
 
-                    <!-- Detailed Naval & Personal Information Grid -->
-                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 text-xs">
+                    <!-- Comprehensive Naval & Personal Information Grid -->
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3.5 bg-slate-950/70 p-4 rounded-2xl border border-slate-800/90 text-xs shadow-inner">
                         <div>
-                            <span class="text-[10px] text-slate-400 uppercase font-bold block">Official Number</span>
-                            <span class="font-mono font-extrabold text-teal-300" id="profDetailOffNo">EC124913</span>
+                            <span class="text-[10px] text-slate-400 uppercase font-extrabold block tracking-wider">Official Number</span>
+                            <span class="font-mono font-extrabold text-teal-300 text-sm" id="profDetailOffNo">EC124913</span>
                         </div>
                         <div>
-                            <span class="text-[10px] text-slate-400 uppercase font-bold block">Rank & Trade</span>
+                            <span class="text-[10px] text-slate-400 uppercase font-extrabold block tracking-wider">Rank & Trade</span>
                             <span class="font-bold text-white" id="profDetailRankTrade">AB / MA</span>
                         </div>
                         <div>
-                            <span class="text-[10px] text-slate-400 uppercase font-bold block">Category</span>
-                            <span class="font-bold text-white" id="profDetailCategory">Regular</span>
+                            <span class="text-[10px] text-slate-400 uppercase font-extrabold block tracking-wider">Category / Rate</span>
+                            <span class="font-bold text-amber-300" id="profDetailCategory">Regular</span>
                         </div>
                         <div>
-                            <span class="text-[10px] text-slate-400 uppercase font-bold block">City / Hometown</span>
-                            <span class="font-bold text-emerald-300" id="profDetailCity">📍 Trincomalee</span>
+                            <span class="text-[10px] text-slate-400 uppercase font-extrabold block tracking-wider">Service Status</span>
+                            <span class="font-bold text-emerald-400" id="profDetailStatus">Active Duty</span>
                         </div>
+
                         <div>
-                            <span class="text-[10px] text-slate-400 uppercase font-bold block">Assigned Zone</span>
+                            <span class="text-[10px] text-slate-400 uppercase font-extrabold block tracking-wider">Assigned Zone</span>
                             <span class="font-bold text-white" id="profDetailZone">A-Zone</span>
                         </div>
                         <div>
-                            <span class="text-[10px] text-slate-400 uppercase font-bold block">Date of Joining</span>
-                            <span class="font-mono text-slate-300" id="profDetailJoining">2021-04-15</span>
+                            <span class="text-[10px] text-slate-400 uppercase font-extrabold block tracking-wider">Division / Base Unit</span>
+                            <span class="font-bold text-slate-200" id="profDetailDivision">SLNS Tissa / NCW</span>
                         </div>
                         <div>
-                            <span class="text-[10px] text-slate-400 uppercase font-bold block">Contact Number</span>
-                            <span class="font-mono text-slate-300" id="profDetailContact">+94 77 123 4567</span>
+                            <span class="text-[10px] text-slate-400 uppercase font-extrabold block tracking-wider">Date of Enlistment</span>
+                            <span class="font-mono text-slate-200" id="profDetailJoining">2021-04-15</span>
                         </div>
                         <div>
-                            <span class="text-[10px] text-slate-400 uppercase font-bold block">Service Status</span>
-                            <span class="font-bold text-teal-400" id="profDetailStatus">Active Duty</span>
+                            <span class="text-[10px] text-slate-400 uppercase font-extrabold block tracking-wider">Years of Service</span>
+                            <span class="font-bold text-teal-300" id="profDetailYearsService">5 Years</span>
                         </div>
-                        <div class="col-span-2 sm:col-span-3 lg:col-span-4 border-t border-slate-800/80 pt-2">
-                            <span class="text-[10px] text-slate-400 uppercase font-bold block mb-1">Special Skills & Expertise</span>
+
+                        <div>
+                            <span class="text-[10px] text-slate-400 uppercase font-extrabold block tracking-wider">NIC / National ID</span>
+                            <span class="font-mono font-semibold text-slate-300" id="profDetailNic">199512345678</span>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-slate-400 uppercase font-extrabold block tracking-wider">Date of Birth & Age</span>
+                            <span class="font-bold text-slate-200" id="profDetailDob">1995-08-12 (30 Yrs)</span>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-slate-400 uppercase font-extrabold block tracking-wider">Blood Group</span>
+                            <span class="font-extrabold text-rose-400" id="profDetailBloodGroup">O+</span>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-slate-400 uppercase font-extrabold block tracking-wider">City / Hometown</span>
+                            <span class="font-bold text-emerald-300" id="profDetailCity">📍 Trincomalee</span>
+                        </div>
+
+                        <div>
+                            <span class="text-[10px] text-slate-400 uppercase font-extrabold block tracking-wider">Contact Mobile</span>
+                            <span class="font-mono text-teal-300 font-bold" id="profDetailContact">+94 77 123 4567</span>
+                        </div>
+                        <div class="col-span-1 sm:col-span-2">
+                            <span class="text-[10px] text-slate-400 uppercase font-extrabold block tracking-wider">Personal Email</span>
+                            <span class="font-mono text-slate-300 truncate block" id="profDetailEmail">kamal.perera@navy.lk</span>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-slate-400 uppercase font-extrabold block tracking-wider">Emergency Contact / Kin</span>
+                            <span class="font-bold text-amber-300 text-[11px]" id="profDetailEmergencyContact">Spouse / +94 71 987 6543</span>
+                        </div>
+
+                        <div class="col-span-2 sm:col-span-3 lg:col-span-4 border-t border-slate-800/80 pt-2.5">
+                            <span class="text-[10px] text-slate-400 uppercase font-extrabold block tracking-wider mb-1">Permanent Home Address</span>
+                            <span class="font-medium text-slate-300" id="profDetailAddress">No. 45, Naval Quarters, Trincomalee</span>
+                        </div>
+
+                        <div class="col-span-2 sm:col-span-3 lg:col-span-4 border-t border-slate-800/80 pt-2.5">
+                            <span class="text-[10px] text-slate-400 uppercase font-extrabold block tracking-wider mb-1.5">Special Skills & Technical Qualifications</span>
                             <div class="flex flex-wrap gap-1.5" id="profDetailSkills">
-                                <span class="px-2 py-0.5 bg-teal-500/20 text-teal-300 rounded text-[10px] font-bold">Masonry</span>
+                                <span class="px-2.5 py-1 bg-teal-500/20 border border-teal-400/30 text-teal-300 rounded-lg text-[10px] font-extrabold">🛠️ Masonry</span>
                             </div>
                         </div>
                     </div>

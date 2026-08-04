@@ -498,13 +498,41 @@ function initSailorsListener() {
             ["Trincomalee", "Colombo", "Kandy", "Galle", "Jaffna", "Kurunegala", "Anuradhapura", "Matara"][idx % 8]
           ),
           special_skills: s.special_skills || s.skills || s.specialSkills || (
-            s.trade === "WE" ? ["TIG Welding", "Arc Welding"] :
-            s.trade === "PL" ? ["Plumbing", "Piping"] :
-            s.trade === "CA" ? ["Woodworking", "Furniture"] :
-            s.trade === "MA" ? ["Masonry", "Concrete"] :
-            s.trade === "AL" ? ["Aluminum"] :
-            s.trade === "PA" ? ["Painting"] :
-            ["General Skilled"]
+            s.trade === "WE" ? ["TIG Welding", "Arc Welding", "Structural Fitting"] :
+            s.trade === "PL" ? ["Plumbing", "Piping", "Drainage Systems"] :
+            s.trade === "CA" ? ["Woodworking", "Furniture", "Roof Construction"] :
+            s.trade === "MA" ? ["Masonry", "Concrete", "Tile Laying"] :
+            s.trade === "AL" ? ["Aluminum Fabrication", "Glass Fitting"] :
+            s.trade === "PA" ? ["Structural Painting", "Surface Prep"] :
+            s.trade === "SW" ? ["Sheet Metal", "Ductwork"] :
+            ["General Skilled Construction"]
+          ),
+          contact_number: s.contact_number || s.phone || s.mobile || s.contact_no || (
+            `+94 7${(idx % 2 === 0 ? '7' : '1')} ${(100 + (idx * 37) % 899)} ${(1000 + (idx * 137) % 8999)}`
+          ),
+          email: s.email || s.mail || (
+            `${fullName.toLowerCase().replace(/[^a-z]/g, '.')}@navy.lk`
+          ),
+          date_of_joining: s.date_of_joining || s.joining_date || s.doj || s.enlistment_date || (
+            `${2015 + (idx % 8)}-${String((idx % 12) + 1).padStart(2, '0')}-${String((idx % 28) + 1).padStart(2, '0')}`
+          ),
+          nic_no: s.nic_no || s.nic || s.national_id || (
+            `${1990 + (idx % 12)}${String((idx % 12) + 1).padStart(2, '0')}${String((idx % 28) + 1).padStart(2, '0')}0${1000 + (idx * 29) % 8999}V`
+          ),
+          dob: s.dob || s.date_of_birth || s.birth_date || (
+            `${1990 + (idx % 12)}-${String((idx % 12) + 1).padStart(2, '0')}-${String((idx % 28) + 1).padStart(2, '0')}`
+          ),
+          blood_group: s.blood_group || s.bloodGroup || s.blood || (
+            ["O+", "A+", "B+", "AB+", "O-", "A-"][idx % 6]
+          ),
+          emergency_contact: s.emergency_contact || s.emergencyContact || s.next_of_kin || (
+            `Spouse / +94 71 ${(200 + (idx * 43) % 799)} ${(1000 + (idx * 157) % 8999)}`
+          ),
+          permanent_address: s.permanent_address || s.address || s.home_address || (
+            `No. ${(idx % 120) + 1}, Naval Base Quarters, ${s.city || 'Trincomalee'}`
+          ),
+          division: s.division || s.unit || s.establishment || (
+            `SLNS Tissa / NCW Unit`
           ),
           _fbKey: s._fbKey,
           _searchIndex, // ← used for search — covers ALL Firebase fields
@@ -13564,15 +13592,32 @@ function openSailorProfile(sailorId) {
   const elCat = document.getElementById("profDetailCategory"); if (elCat) elCat.textContent = sailor.category || 'Regular';
   const elCity = document.getElementById("profDetailCity"); if (elCity) elCity.textContent = `📍 ${sailor.city || 'Trincomalee'}`;
   const elZone = document.getElementById("profDetailZone"); if (elZone) elZone.textContent = sailor.zone_assigned || 'A-Zone';
+  const elDivision = document.getElementById("profDetailDivision"); if (elDivision) elDivision.textContent = sailor.division || 'SLNS Tissa / NCW Unit';
   const elJoining = document.getElementById("profDetailJoining"); if (elJoining) elJoining.textContent = sailor.date_of_joining || '2021-04-15';
+  
+  const joiningYear = parseInt((sailor.date_of_joining || '2021').substring(0, 4)) || 2021;
+  const yearsService = Math.max(1, new Date().getFullYear() - joiningYear);
+  const elYears = document.getElementById("profDetailYearsService"); if (elYears) elYears.textContent = `${yearsService} Years`;
+
+  const elNic = document.getElementById("profDetailNic"); if (elNic) elNic.textContent = sailor.nic_no || '199512345678V';
+  
+  const birthYear = parseInt((sailor.dob || '1995').substring(0, 4)) || 1995;
+  const age = Math.max(18, new Date().getFullYear() - birthYear);
+  const elDob = document.getElementById("profDetailDob"); if (elDob) elDob.textContent = `${sailor.dob || '1995-08-12'} (${age} Yrs)`;
+  
+  const elBlood = document.getElementById("profDetailBloodGroup"); if (elBlood) elBlood.textContent = sailor.blood_group || 'O+';
   const elContact = document.getElementById("profDetailContact"); if (elContact) elContact.textContent = sailor.contact_number || '+94 77 123 4567';
+  const elEmail = document.getElementById("profDetailEmail"); if (elEmail) elEmail.textContent = sailor.email || `${sailor.name.toLowerCase().replace(/[^a-z]/g, '.')}@navy.lk`;
+  const elEmergency = document.getElementById("profDetailEmergencyContact"); if (elEmergency) elEmergency.textContent = sailor.emergency_contact || 'Spouse / +94 71 987 6543';
+  const elAddress = document.getElementById("profDetailAddress"); if (elAddress) elAddress.textContent = sailor.permanent_address || `No. 45, Naval Quarters, ${sailor.city || 'Trincomalee'}`;
+
   const elStatus = document.getElementById("profDetailStatus"); if (elStatus) elStatus.textContent = sailor.attendance === 'Leave' ? 'On Leave' : (sailor.attendance === 'Sick' ? 'Sick' : 'Active Duty');
 
   // Special Skills
   const elSkills = document.getElementById("profDetailSkills");
   if (elSkills) {
     const skillsArr = Array.isArray(sailor.special_skills) ? sailor.special_skills : String(sailor.special_skills || 'General Skilled').split(',');
-    elSkills.innerHTML = skillsArr.map(sk => `<span class="px-2 py-0.5 bg-teal-500/20 text-teal-300 rounded text-[10px] font-bold">🛠️ ${sk.trim()}</span>`).join('');
+    elSkills.innerHTML = skillsArr.map(sk => `<span class="px-2.5 py-1 bg-teal-500/20 border border-teal-400/30 text-teal-300 rounded-lg text-[10px] font-extrabold">🛠️ ${sk.trim()}</span>`).join('');
   }
 
   // Trade badge style
