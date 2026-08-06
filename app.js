@@ -605,6 +605,7 @@ function initAvailabilityListener() {
 function initLongTermDeploymentsListeners() {
   opsDB.ref("out_projects").on("value", (snapshot) => {
     store.outProjects = snapshot.val() || {};
+    syncFirebaseTasksToWorkOrders();
     renderDashboard();
     renderProjectsList();
   });
@@ -625,6 +626,7 @@ function initLongTermDeploymentsListeners() {
   });
   opsDB.ref("daily_tasks").on("value", (snapshot) => {
     store.dailyTasks = snapshot.val() || {};
+    syncFirebaseTasksToWorkOrders();
     renderDashboard();
     if (typeof renderDailyDetailsSpecialView === "function") renderDailyDetailsSpecialView();
   });
@@ -1464,6 +1466,82 @@ function isWorkOrderActiveOnDate(wo, dateStr) {
 
   return false;
 }
+
+function isZoneMatchForBoard(woZoneId, currentZoneId) {
+  if (!currentZoneId || currentZoneId === "all") return true;
+  if (!woZoneId) return true;
+  if (String(woZoneId) === String(currentZoneId)) return true;
+  const currentZoneObj = (store.zones || []).find((z) => String(z.id) === String(currentZoneId) || String(z.name) === String(currentZoneId));
+  const woZoneObj = (store.zones || []).find((z) => String(z.id) === String(woZoneId) || String(z.name) === String(woZoneId));
+  if (currentZoneObj && woZoneObj && String(currentZoneObj.id) === String(woZoneObj.id)) return true;
+  if (currentZoneObj && currentZoneObj.name && woZoneId && String(woZoneId).toLowerCase() === String(currentZoneObj.name).toLowerCase()) return true;
+  return false;
+}
+
+function syncFirebaseTasksToWorkOrders() {
+  if (!store.workOrders) store.workOrders = [];
+  const existingIds = new Set((store.workOrders || []).map((w) => String(w.id || w._fbKey)));
+
+  // 1. Sync dailyTasks
+  if (store.dailyTasks && typeof store.dailyTasks === "object") {
+    Object.keys(store.dailyTasks).forEach((key) => {
+      if (!existingIds.has(String(key))) {
+        const dt = store.dailyTasks[key];
+        if (dt && typeof dt === "object") {
+          const assignedArray = dt.assigned_sailors
+            ? (Array.isArray(dt.assigned_sailors)
+                ? dt.assigned_sailors
+                : Object.keys(dt.assigned_sailors))
+            : [];
+          store.workOrders.push({
+            id: key,
+            _fbKey: key,
+            reference_no: dt.job_no || `DT-${key.slice(-5)}`,
+            title: dt.name || dt.description || "Daily Task",
+            description: dt.description || dt.name || "Daily Task",
+            type: "TASK",
+            zone_id: dt.zone_id || dt.zone || (store.zones && store.zones[0] ? store.zones[0].id : "z1"),
+            created_at: dt.created_at || getLocalDateString(),
+            status: (dt.status && dt.status.includes("Completed")) ? "Completed" : "Active",
+            assigned: assignedArray,
+            location: dt.location || "",
+          });
+          existingIds.add(String(key));
+        }
+      }
+    });
+  }
+
+  // 2. Sync outProjects
+  if (store.outProjects && typeof store.outProjects === "object") {
+    Object.keys(store.outProjects).forEach((key) => {
+      if (!existingIds.has(String(key))) {
+        const proj = store.outProjects[key];
+        if (proj && typeof proj === "object") {
+          const assignedArray = proj.assigned_sailors
+            ? (Array.isArray(proj.assigned_sailors)
+                ? proj.assigned_sailors
+                : Object.keys(proj.assigned_sailors))
+            : [];
+          store.workOrders.push({
+            id: key,
+            _fbKey: key,
+            reference_no: proj.job_no || `PROJ-${key.slice(-5)}`,
+            title: proj.name || "Out Project",
+            description: proj.name || "Out Project",
+            type: "PROJECT",
+            zone_id: proj.zone_id || proj.zone || (store.zones && store.zones[0] ? store.zones[0].id : "z1"),
+            created_at: proj.created_at || getLocalDateString(),
+            status: "Active",
+            assigned: assignedArray,
+            location: proj.location || "",
+          });
+          existingIds.add(String(key));
+        }
+      }
+    });
+  }
+}
 function getSailorAssignmentOnDate(sailorId, dateVal) {
   if (!store.dailyAllocationsMap) return null;
   const alloc =
@@ -1768,7 +1846,7 @@ function renderWorkOrders() {
       (wo) =>
         wo.type === type &&
         !wo.assign_type &&
-        wo.zone_id === store.currentZone &&
+        isZoneMatchForBoard(wo.zone_id, store.currentZone) &&
         isWorkOrderActiveOnDate(wo, dateVal),
     );
     columns[type].innerHTML = orders
@@ -1834,7 +1912,7 @@ function renderQuickAssignments() {
   const quickOrders = store.workOrders.filter(
     (wo) =>
       wo.assign_type &&
-      wo.zone_id === store.currentZone &&
+      isZoneMatchForBoard(wo.zone_id, store.currentZone) &&
       isWorkOrderActiveOnDate(wo, dateVal),
   );
   const badge = document.getElementById("quickAssignCountBadge");
@@ -1854,27 +1932,27 @@ function updateBoardEmptyState() {
     (wo) =>
       wo.type === "PROJECT" &&
       !wo.assign_type &&
-      wo.zone_id === store.currentZone &&
+      isZoneMatchForBoard(wo.zone_id, store.currentZone) &&
       isWorkOrderActiveOnDate(wo, dateVal),
   ).length;
   const jobs = store.workOrders.filter(
     (wo) =>
       wo.type === "JOB" &&
       !wo.assign_type &&
-      wo.zone_id === store.currentZone &&
+      isZoneMatchForBoard(wo.zone_id, store.currentZone) &&
       isWorkOrderActiveOnDate(wo, dateVal),
   ).length;
   const tasks = store.workOrders.filter(
     (wo) =>
       wo.type === "TASK" &&
       !wo.assign_type &&
-      wo.zone_id === store.currentZone &&
+      isZoneMatchForBoard(wo.zone_id, store.currentZone) &&
       isWorkOrderActiveOnDate(wo, dateVal),
   ).length;
   const assigns = store.workOrders.filter(
     (wo) =>
       wo.assign_type &&
-      wo.zone_id === store.currentZone &&
+      isZoneMatchForBoard(wo.zone_id, store.currentZone) &&
       isWorkOrderActiveOnDate(wo, dateVal),
   ).length; // Explicitly toggle hidden class on wrappers to ensure they are hidden on mobile
   const projWrapper = document.getElementById("projectColumnWrapper");
