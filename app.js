@@ -623,6 +623,14 @@ function initLongTermDeploymentsListeners() {
     renderDashboard();
     renderProjectsList();
   });
+  opsDB.ref("daily_tasks").on("value", (snapshot) => {
+    store.dailyTasks = snapshot.val() || {};
+    renderDashboard();
+    if (typeof renderDailyDetailsSpecialView === "function") renderDailyDetailsSpecialView();
+  });
+  opsDB.ref("sailor_project_history").on("value", (snapshot) => {
+    store.sailorProjectHistory = snapshot.val() || {};
+  });
   opsDB.ref("daily_evaluations").on("value", (snapshot) => {
     const val = snapshot.val() || {};
     store.dailyEvaluations = Object.entries(val).map(([k, v]) => ({ id: k, ...v }));
@@ -1477,9 +1485,13 @@ function getSailorAssignmentOnDate(sailorId, dateVal) {
   return null;
 }
 function getSailorCurrentAssignment(sailorId) {
+  if (!sailorId) return null;
+  const sIdStr = String(sailorId);
   const today = getLocalDateString();
+
+  // 1. Check Work Orders & Daily Allocations
   const alloc = (store.dailyAllocations || []).find(
-    (a) => a.date === today && String(a.sailor_id) === String(sailorId)
+    (a) => a.date === today && (String(a.sailor_id) === sIdStr || String(a.sailor_fb_key) === sIdStr)
   );
   if (alloc) {
     if (alloc.work_order_id) {
@@ -1488,18 +1500,57 @@ function getSailorCurrentAssignment(sailorId) {
       );
       if (wo) {
         return {
-          ref: wo.reference_no || "Active WO",
-          title: wo.description || "",
+          ref: wo.reference_no || `WO-#${wo.id}`,
+          title: wo.description || wo.title || "Work Order",
           zone: wo.zone_id || alloc.zone_id || "",
+          type: "Work Order"
         };
       }
     }
     return {
        ref: "Assigned",
        title: "Assigned today",
-       zone: alloc.zone_id || ""
+       zone: alloc.zone_id || "",
+       type: "Daily Allocation"
     };
   }
+
+  // 2. Check Long Term & Project Allocations (outProjects, housingProjects, otherBases, adminStaffDuties, dailyTasks)
+  const longTerm = getLongTermAllocations();
+  const allProjects = [
+    ...(longTerm.outProject || []).map(p => ({ ...p, type: 'Out Project' })),
+    ...(longTerm.housing || []).map(p => ({ ...p, type: 'Housing Project' })),
+    ...(longTerm.otherBase || []).map(p => ({ ...p, type: 'Other Base' })),
+    ...(longTerm.adminDuty || []).map(p => ({ ...p, type: 'Admin Duty' })),
+    ...(longTerm.dailyTask || []).map(p => ({ ...p, type: 'Daily Task' }))
+  ];
+
+  const match = allProjects.find(p => p.sailor && (String(p.sailor.id) === sIdStr || String(p.sailor._fbKey) === sIdStr));
+  if (match) {
+    return {
+      ref: match.projectId || "Project",
+      title: match.projectName || "Assigned Project",
+      zone: match.type || "Deployed",
+      type: match.type
+    };
+  }
+
+  // 3. Check Sailor Project History
+  const history = store.sailorProjectHistory;
+  if (history && (history[sIdStr] || history[sailorId])) {
+    const userHist = history[sIdStr] || history[sailorId];
+    const entries = Object.values(userHist);
+    const latestEntry = entries[entries.length - 1];
+    if (latestEntry && latestEntry.project_name) {
+      return {
+        ref: latestEntry.project_id || "History",
+        title: latestEntry.project_name,
+        zone: latestEntry.type || "Historical Assignment",
+        type: latestEntry.type || "History"
+      };
+    }
+  }
+
   return null;
 }
 function renderAvailableSailors() {
@@ -2230,26 +2281,29 @@ function toggleZoneTeam(sailorId, addToTeam) {
 }
 
 function getLongTermAllocations() {
-  let allocs = { housing: [], outProject: [], otherBase: [] };
+  let allocs = { housing: [], outProject: [], otherBase: [], adminDuty: [], dailyTask: [] };
 
   const processProjects = (projectsObj, allocArray, defaultName) => {
     if (projectsObj) {
       Object.keys(projectsObj).forEach((pid) => {
         const proj = projectsObj[pid];
-        const name = (proj.name || defaultName).trim();
+        const name = (proj.name || proj.title || defaultName).trim();
         if (proj.assigned_sailors) {
           Object.keys(proj.assigned_sailors).forEach((sailorFbKey) => {
-            const sailor = store.sailors.find(
+            const sailor = (store.sailors || []).find(
               (s) =>
                 String(s._fbKey) === String(sailorFbKey) ||
                 String(s.id) === String(sailorFbKey),
             );
             if (sailor) {
+              const assignedDate = (typeof proj.assigned_sailors[sailorFbKey] === 'object' && proj.assigned_sailors[sailorFbKey].assigned_date)
+                ? proj.assigned_sailors[sailorFbKey].assigned_date
+                : Date.now();
               allocArray.push({
                 sailor,
                 projectName: name,
                 projectId: pid,
-                date: proj.assigned_sailors[sailorFbKey].assigned_date || Date.now(),
+                date: assignedDate,
               });
             }
           });
@@ -2261,6 +2315,8 @@ function getLongTermAllocations() {
   processProjects(store.outProjects, allocs.outProject, "Unknown Out Project");
   processProjects(store.housingProjects, allocs.housing, "Unknown Housing Project");
   processProjects(store.otherBases, allocs.otherBase, "Unknown Base");
+  processProjects(store.adminStaffDuties, allocs.adminDuty, "Admin & Staff Duty");
+  processProjects(store.dailyTasks, allocs.dailyTask, "Daily Task");
 
   return allocs;
 }
@@ -11592,6 +11648,20 @@ function renderDailyDetailsSpecialView() {
     longTerm.otherBase,
     "bg-cyan-900",
     "text-cyan-100",
+  );
+  renderLongTermCategory(
+    "ADMIN & STAFF DUTIES",
+    "💼",
+    longTerm.adminDuty || [],
+    "bg-amber-900",
+    "text-amber-100",
+  );
+  renderLongTermCategory(
+    "DAILY TASKS & JOBS",
+    "📋",
+    longTerm.dailyTask || [],
+    "bg-emerald-900",
+    "text-emerald-100",
   );
   if (!hasAllocations) {
     tableRows = `
