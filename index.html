@@ -46,17 +46,22 @@
             appId: "1:992132561625:web:5b4f0c753c568cea66dcc8"
         };
 
-        // Initialize Firebase App #1 — Sailors DB (named 'sailors')
+        // Initialize Firebase App #1 — Production DB (named 'sailors')
         const sailorsApp = firebase.initializeApp(sailorsFirebaseConfig, 'sailors');
         const sailorsDB = firebase.database(sailorsApp);
 
-        // Initialize Firebase App #2 — CE Management System Operations DB (named 'operations')
-        const opsApp = firebase.initializeApp(opsFirebaseConfig, 'operations');
-        const opsDB = firebase.database(opsApp);
+        // Primary Operations DB points to active production DB (ce-admin-panel2025)
+        let opsDB = sailorsDB;
+        try {
+            const opsApp = firebase.initializeApp(opsFirebaseConfig, 'operations');
+            // Connect operations DB to sailorsDB for full live data access
+            opsDB = sailorsDB;
+        } catch(e) {
+            opsDB = sailorsDB;
+        }
 
-        console.log('✅ CMSys: Dual Firebase initialized');
-        console.log('   DB#1 (Sailors):', sailorsFirebaseConfig.projectId);
-        console.log('   DB#2 (Ops):', opsFirebaseConfig.projectId);
+        console.log('✅ CMSys: Firebase initialized on production DB (ce-admin-panel2025)');
+        console.log('   DB (Sailors & Operations):', sailorsFirebaseConfig.projectId);
     </script>
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Sinhala:wght@400;500;600&display=swap"
